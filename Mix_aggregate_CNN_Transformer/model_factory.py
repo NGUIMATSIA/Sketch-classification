@@ -2,7 +2,7 @@ from model import get_pretrained_model
 
 class ModelFactory:
     def __init__(self, model_names, num_classes=250):
-        # Assurez-vous que model_names est une liste
+        
         if isinstance(model_names, str):
             model_names = [model_names]
 

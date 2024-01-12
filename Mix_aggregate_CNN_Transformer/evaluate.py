@@ -52,16 +52,14 @@ class EnsembleModel(nn.Module):
             self.models.append(model)
 
     def forward(self, x):
-    # Gather the predictions from all models
       preds_list = [model(x) for model in self.models]
 
-    # Convert each model's logits to probabilities
+    
       softmaxed_preds = [F.softmax(pred, dim=1) for pred in preds_list]
 
-    # Calculate the average of the probabilities
+   
       mean_preds = torch.mean(torch.stack(softmaxed_preds), dim=0)
 
-    # Determine the final predictions by taking the argmax of the averaged probabilities
       final_preds = torch.argmax(mean_preds, dim=1)
 
       return final_preds
@@ -70,10 +68,10 @@ class EnsembleModel(nn.Module):
 
 
 def opts():
-    parser = argparse.ArgumentParser(description="RecVis A3 evaluation script")
+    parser = argparse.ArgumentParser(description="Advenced Machine Learning")
     parser.add_argument("--data", type=str, default="data_sketches", help="folder where data is located")
     parser.add_argument("--model_names", nargs='+', help="list of model names for the ensemble")
-    parser.add_argument("--outfile", type=str, default="experiment/kaggle.csv", help="output CSV file name")
+    parser.add_argument("--outfile", type=str, default="experiment/test_predit.CSV", help="output CSV file name")
     return parser.parse_args()
 
 def pil_loader(path):
@@ -87,7 +85,7 @@ def main():
     device = torch.device("cuda" if use_cuda else "cpu")
 
     model_paths = [os.path.join('experiment', f"{name}_best.pth") for name in args.model_names]
-    ensemble_model = EnsembleModel(model_paths, num_classes= 250, device=device)
+    ensemble_model = EnsembleModel(model_paths, num_classes=250, device=device)
     ensemble_model.eval()
 
     transform = transforms.Compose([
@@ -96,24 +94,45 @@ def main():
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ])
 
-    test_dir = os.path.join(args.data, "test_images/mistery_category")
-    with open(args.outfile, "w", newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow(["Id", "Label"])
+    test_dir = args.data
 
-        for f in tqdm(sorted(os.listdir(test_dir))):
+    class_correct = Counter()
+    class_total = Counter()
+
+    for root, dirs, files in tqdm(os.walk(test_dir)):
+        for f in files:
             if f.lower().endswith('.png'):
-                img_path = os.path.join(test_dir, f)
+                class_label = os.path.basename(root) 
+                img_path = os.path.join(root, f)
                 img = pil_loader(img_path)
                 img = transform(img).unsqueeze(0).to(device)
-                
+
                 output = ensemble_model(img)
                 pred = output.item()
-                
-                filename_without_extension = os.path.splitext(f)[0]
-                writer.writerow([filename_without_extension, pred])
 
-    print(f"Successfully wrote {args.outfile}, you can upload this file to the Kaggle competition website.")
+                class_total[class_label] += 1
+                if pred == int(class_label):
+                    class_correct[class_label] += 1
+
+   
+    class_performance = {cls: (class_correct[cls] / class_total[cls] if class_total[cls] > 0 else 0) for cls in class_total}
+
+   
+    best_performing_classes = sorted(class_performance.items(), key=lambda x: x[1], reverse=True)[:5]
+    worst_performing_classes = sorted(class_performance.items(), key=lambda x: x[1])[:5]
+
+    
+    print("Overall Performance on Test Set:")
+    for cls, performance in class_performance.items():
+        print(f"Class {cls}: Accuracy {performance:.2f}")
+
+    print("\nTop 5 Best Performing Classes:")
+    for cls, performance in best_performing_classes:
+        print(f"Class {cls}: Accuracy {performance:.2f}")
+
+    print("\nTop 5 Worst Performing Classes:")
+    for cls, performance in worst_performing_classes:
+        print(f"Class {cls}: Accuracy {performance:.2f}")
 
 if __name__ == "__main__":
     main()
