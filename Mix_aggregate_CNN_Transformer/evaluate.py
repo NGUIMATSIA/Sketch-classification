@@ -5,15 +5,11 @@ import torch.nn as nn
 from PIL import Image
 from torchvision import transforms
 from tqdm import tqdm
-from model_factory import ModelFactory 
-import csv
 import torch
 from torchvision import models
-from collections import OrderedDict
 from model import get_pretrained_model, CustomModel
 import timm
 import torch.nn.functional as F
-from transformers import ViTForImageClassification
 from collections import Counter
 
 class EnsembleModel(nn.Module):
@@ -25,10 +21,10 @@ class EnsembleModel(nn.Module):
             model_name = os.path.basename(path).split('_')[0]
 
             if model_name == "resnet50":
-                base_model = getattr(models, model_name)(pretrained=False)
+                base_model = getattr(models, model_name)(weights=False)
                 model = CustomModel(base_model, num_classes)
             elif model_name == "resnext50":
-              base_model = getattr(models, "resnext50_32x4d")(pretrained=False)
+              base_model = getattr(models, "resnext50_32x4d")(weights=False)
               model = CustomModel(base_model, num_classes)
             elif model_name in ["efficientnet"]:
                 model = timm.create_model("efficientnet_b3", pretrained=False, num_classes=num_classes)
@@ -71,7 +67,7 @@ def opts():
     parser = argparse.ArgumentParser(description="Advenced Machine Learning")
     parser.add_argument("--data", type=str, default="data_sketches", help="folder where data is located")
     parser.add_argument("--model_names", nargs='+', help="list of model names for the ensemble")
-    parser.add_argument("--outfile", type=str, default="experiment/test_predit.CSV", help="output CSV file name")
+    #parser.add_argument("--outfile", type=str, default="experiment/test_predit.CSV", help="output CSV file name")
     return parser.parse_args()
 
 def pil_loader(path):
@@ -84,7 +80,8 @@ def main():
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
 
-    model_paths = [os.path.join('experiment', f"{name}_best.pth") for name in args.model_names]
+    model_paths = [os.path.join('C:/Users/frank/Sketch-classification/experiment', f"{name}_best.pth") for name in args.model_names]
+
     ensemble_model = EnsembleModel(model_paths, num_classes=250, device=device)
     ensemble_model.eval()
 
@@ -94,6 +91,12 @@ def main():
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ])
 
+    
+    #This part is just design to get the names of labels
+    train_dir = "C:/Users/frank/Desktop/TU_berlin/train"
+    class_names = sorted(os.listdir(train_dir))
+    class_to_idx = {class_name: i for i, class_name in enumerate(class_names)}
+
     test_dir = args.data
 
     class_correct = Counter()
@@ -102,29 +105,30 @@ def main():
     for root, dirs, files in tqdm(os.walk(test_dir)):
         for f in files:
             if f.lower().endswith('.png'):
-                class_label = os.path.basename(root) 
+                class_label = os.path.basename(root)
                 img_path = os.path.join(root, f)
                 img = pil_loader(img_path)
                 img = transform(img).unsqueeze(0).to(device)
-
                 output = ensemble_model(img)
-                pred = output.item()
+                pred = torch.argmax(output).item()
+
+                class_index = class_to_idx[class_label]
 
                 class_total[class_label] += 1
-                if pred == int(class_label):
+                if pred == class_index:
                     class_correct[class_label] += 1
 
-   
+    
     class_performance = {cls: (class_correct[cls] / class_total[cls] if class_total[cls] > 0 else 0) for cls in class_total}
+    
+    overall_performance = sum(class_performance.values()) / len(class_performance) if class_performance else 0
 
-   
+    # Identifying top 5 and bottom 5 classes
     best_performing_classes = sorted(class_performance.items(), key=lambda x: x[1], reverse=True)[:5]
     worst_performing_classes = sorted(class_performance.items(), key=lambda x: x[1])[:5]
 
-    
-    print("Overall Performance on Test Set:")
-    for cls, performance in class_performance.items():
-        print(f"Class {cls}: Accuracy {performance:.2f}")
+    # Displaying the results
+    print(f"Global Accuracy: {overall_performance:.2f}")
 
     print("\nTop 5 Best Performing Classes:")
     for cls, performance in best_performing_classes:

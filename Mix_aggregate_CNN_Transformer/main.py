@@ -6,7 +6,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from data import get_datasets
 from model_factory import ModelFactory
-import numpy as np
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Ensemble Model Training for Sketch Classification")

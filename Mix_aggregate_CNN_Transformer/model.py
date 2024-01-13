@@ -1,4 +1,3 @@
-import torch
 import torch.nn as nn
 import torchvision.models as models
 import timm  
@@ -9,12 +8,12 @@ class CustomModel(nn.Module):
         super(CustomModel, self).__init__()
         self.base_model = base_model
 
-        # Pour ResNet, ResNeXt
+        # For ResNet, ResNeXt
         if hasattr(base_model, 'fc'):
             in_features = base_model.fc.in_features
             base_model.fc = nn.Identity()
 
-        # Pour MobileNet, DenseNet
+        # For MobileNet, DenseNet
         elif hasattr(base_model, 'classifier'):
             if isinstance(base_model.classifier, nn.Sequential):
                 if isinstance(base_model.classifier[-1], nn.Linear):
@@ -28,12 +27,12 @@ class CustomModel(nn.Module):
             base_model.classifier = nn.Identity()
 
 
-        # Pour Vision Transformer
+       
         elif isinstance(base_model, ViTForImageClassification):
             in_features = base_model.classifier.in_features
             base_model.classifier = nn.Identity()
 
-        # Ajouter une couche de Dropout
+        
         self.dropout = nn.Dropout(dropout_rate)
         self.fc = nn.Linear(in_features, num_classes)
 
