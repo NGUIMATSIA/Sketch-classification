@@ -64,9 +64,18 @@ class EnsembleModel(nn.Module):
 
 
 def opts():
-    parser = argparse.ArgumentParser(description="Advenced Machine Learning")
-    parser.add_argument("--data", type=str, default="data_sketches", help="folder where data is located")
-    parser.add_argument("--model_names", nargs='+', help="list of model names for the ensemble")
+    parser = argparse.ArgumentParser(
+        description="Advenced Machine Learning"
+        )
+    parser.add_argument("--data",
+                         type=str, 
+                         default="data_sketches", 
+                         help="folder where data is located"
+                         )
+    parser.add_argument("--model_names",
+                         nargs='+',
+                           help="list of model names for the ensemble"
+                           )
     #parser.add_argument("--outfile", type=str, default="experiment/test_predit.CSV", help="output CSV file name")
     return parser.parse_args()
 
@@ -80,7 +89,7 @@ def main():
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
 
-    model_paths = [os.path.join('C:/Users/frank/Sketch-classification/experiment', f"{name}_best.pth") for name in args.model_names]
+    model_paths = [os.path.join('/content/drive/My Drive/experiment', f"{name}_best.pth") for name in args.model_names]
 
     ensemble_model = EnsembleModel(model_paths, num_classes=250, device=device)
     ensemble_model.eval()
@@ -93,7 +102,7 @@ def main():
 
     
     #This part is just design to get the names of labels
-    train_dir = "C:/Users/frank/Desktop/TU_berlin/train"
+    train_dir = "/content/drive/My Drive/TU_berlin/train"
     class_names = sorted(os.listdir(train_dir))
     class_to_idx = {class_name: i for i, class_name in enumerate(class_names)}
 

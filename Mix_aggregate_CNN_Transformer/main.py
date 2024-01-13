@@ -9,17 +9,64 @@ from model_factory import ModelFactory
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Ensemble Model Training for Sketch Classification")
-    parser.add_argument("--data_train", type=str, required=True, help="Path to the training data directory")
-    parser.add_argument("--data_val", type=str, required=True, help="Path to the validation data directory")
-    parser.add_argument("--model_names", nargs='+', required=True, help="List of model names for the ensemble")
-    parser.add_argument("--batch_size", type=int, default=64, help="Batch size for training and validation")
-    parser.add_argument("--epochs", type=int, default=30, help="Number of epochs to train")
-    parser.add_argument("--lr", type=float, default=0.001, help="Learning rate")
-    parser.add_argument("--momentum", type=float, default=0.9, help="Momentum for the SGD optimizer")
-    parser.add_argument("--weight_decay", type=float, default=1e-4, help="Weight decay (L2 penalty)")
-    parser.add_argument("--num_workers", type=int, default=4, help="Number of workers for data loading")
-    parser.add_argument("--experiment", type=str, default="experiment", help="Folder where experiment outputs are located")
+    parser = argparse.ArgumentParser(
+        description="Ensemble Model Training for Sketch Classification"
+        )
+    parser.add_argument(
+        "--data_train",
+          type=str, 
+          required=True, 
+          help="Path to the training data directory"
+          )
+    parser.add_argument(
+        "--data_val",
+          type=str,
+            required=True,
+              help="Path to the validation data directory"
+              )
+    parser.add_argument(
+        "--model_names", 
+        nargs='+', 
+        required=True, 
+        help="List of model names for the ensemble"
+        )
+    parser.add_argument(
+        "--batch_size", 
+        type=int, 
+        default=64, 
+        help="Batch size for training and validation"
+        )
+    parser.add_argument(
+        "--epochs",
+          type=int,
+            default=30, 
+            help="Number of epochs to train"
+            )
+    parser.add_argument("--lr",
+                         type=float, 
+                         default=0.001,
+                           help="Learning rate"
+                           )
+    parser.add_argument("--momentum", 
+                        type=float,
+                          default=0.9,
+                            help="Momentum for the SGD optimizer"
+                            )
+    parser.add_argument("--weight_decay",
+                         type=float,
+                           default=1e-4,
+                             help="Weight decay (L2 penalty)"
+                             )
+    parser.add_argument("--num_workers", 
+                        type=int,
+                          default=4, 
+                          help="Number of workers for data loading"
+                          )
+    parser.add_argument("--experiment", 
+                        type=str,
+                          default="/content/drive/My Drive/experiment",
+                            help="Folder where experiment outputs are located"
+                            )
     return parser.parse_args()
 
 def train_one_epoch(model, train_loader, criterion, optimizer, device):
