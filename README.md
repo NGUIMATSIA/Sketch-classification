@@ -1,10 +1,7 @@
-# Sketch Classification Project
-
+# Sketch Recognition
 ## Overview
-L'objectif de ce projet est de proposer un modèle de machine learning pour la classification de croquis à partir de la base de données [TU Berlin](https://cybertron.cg.tu-berlin.de/eitz/projects/classifysketch/). Nous avons divisé cette base en ensembles d'entraînement (70%), de validation (15%) et de test (15%) en utilisant le notebook **Split_and_Observe**. Vous pouvez télécharger cette division via le lien suivant:
+The objective of this project is to propose a machine learning model for sketch classification using the [How Do Humans Sketch Objects?](https://cybertron.cg.tu-berlin.de/eitz/projects/classifysketch/) database. We divided this dataset into training (70%), validation (15%), and test (15%) sets using the **Split_and_Observe** notebook. You can download this split through the following link:
 1. [Dataset](https://drive.google.com/drive/folders/1BTFb0hxsmjmgRxxdzVvDOOnGLxe3qSJa?usp=sharing)
 
-Pour reproduire les résultats de ce travail, assurez-vous de modifier les chemins vers les dossiers dans les modules `validation.py` (ligne 66, 130, 99) et `main.py` (ligne 67). Nous avons ajouté des commentaires sur ces différentes lignes. Le notebook `experiment.ipynb` appelle tous les autres modules pour entraîner tous les modèles. Nous avons également sauvegardé les poids de tous les modèles entraînés, que vous pouvez télécharger en utilisant le lien suivant:
+To reproduce the results of this work, make sure to modify the paths to the folders in the `validation.py` (lines 66, 130, 99) and `main.py` (line 67) modules. We have added comments on these different lines. The `experiment.ipynb` notebook calls all the other modules to train all the models. We have also saved the weights of all trained models, which you can download using the following link:
 1. [Trained models](https://drive.google.com/drive/folders/1BTFb0hxsmjmgRxxdzVvDOOnGLxe3qSJa?usp=sharing)
-
-
