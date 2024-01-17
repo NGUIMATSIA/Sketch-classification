@@ -6,4 +6,6 @@ Nous avians avions nous même splitter cette base  en train (70%), validation (1
 \item [Dataset][https://drive.google.com/drive/folders/1BTFb0hxsmjmgRxxdzVvDOOnGLxe3qSJa?usp=sharing]
 \end{enumerate}
 
+Pour reproduire les resultats de ce travail, vous devriez vous assurer de changer  les chemin vers les dossiers dans les modules validation.py (ligne 66, 130, 99) et main.py (ligne 67   
+
 
