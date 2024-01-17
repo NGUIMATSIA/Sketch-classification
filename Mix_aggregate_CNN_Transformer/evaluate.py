@@ -5,12 +5,17 @@ import torch.nn as nn
 from PIL import Image
 from torchvision import transforms
 from tqdm import tqdm
-import torch
+from data import get_datasets, get_transforms
 from torchvision import models
 from model import get_pretrained_model, CustomModel
 import timm
+from torchvision import datasets
 import torch.nn.functional as F
 from collections import Counter
+from torch.utils.data import DataLoader
+from collections import defaultdict
+import matplotlib.pyplot as plt
+import numpy as np
 
 class EnsembleModel(nn.Module):
     def __init__(self, model_paths, num_classes, device):
@@ -50,18 +55,33 @@ class EnsembleModel(nn.Module):
     def forward(self, x):
       preds_list = [model(x) for model in self.models]
 
-    
       softmaxed_preds = [F.softmax(pred, dim=1) for pred in preds_list]
 
-   
       mean_preds = torch.mean(torch.stack(softmaxed_preds), dim=0)
 
-      final_preds = torch.argmax(mean_preds, dim=1)
+      return mean_preds
 
-      return final_preds
+def plot_misclassified_images(images, true_labels, predicted_labels, test_loader):
 
+    save_folder = "/content/drive/My Drive/experiment"
+    os.makedirs(save_folder, exist_ok=True)
 
+    for i in range(30):
+        img = np.transpose(images[i].cpu().numpy(), (1, 2, 0))
+        img = (img - np.min(img)) / (np.max(img) - np.min(img))
 
+        plt.imshow(img)
+    
+        true_class_name = test_loader.dataset.classes[true_labels[i]]
+        predicted_class_name = test_loader.dataset.classes[predicted_labels[i]]
+
+        plt.title(f'True: {true_class_name}, Predicted: {predicted_class_name}')
+        plt.axis('off')
+
+    
+        save_path = os.path.join(save_folder, f'image_{i}.png') 
+        plt.savefig(save_path)
+        plt.clf()
 
 def opts():
     parser = argparse.ArgumentParser(
@@ -69,14 +89,26 @@ def opts():
         )
     parser.add_argument("--data",
                          type=str, 
-                         default="data_sketches", 
+                         default="test", 
                          help="folder where data is located"
                          )
     parser.add_argument("--model_names",
                          nargs='+',
                            help="list of model names for the ensemble"
                            )
-    #parser.add_argument("--outfile", type=str, default="experiment/test_predit.CSV", help="output CSV file name")
+    parser.add_argument("--experiment", type=str, default="/content/drive/My Drive/experiment")
+  
+    parser.add_argument(
+        "--batch_size", 
+        type=int, 
+        default=1, 
+        help="Batch size for training and validation"
+        )
+    parser.add_argument("--num_workers", 
+                        type=int,
+                          default=4, 
+                          help="Number of workers for data loading"
+                          )
     return parser.parse_args()
 
 def pil_loader(path):
@@ -89,63 +121,60 @@ def main():
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
 
-    model_paths = [os.path.join('/content/drive/My Drive/experiment', f"{name}_best.pth") for name in args.model_names]
-
+    model_paths = [os.path.join(args.experiment, f"{name}_best.pth") for name in args.model_names]
     ensemble_model = EnsembleModel(model_paths, num_classes=250, device=device)
     ensemble_model.eval()
 
-    transform = transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-    ])
+    _, test_transforms = get_transforms(input_size=224)
 
-    
-    #This part is just design to get the names of labels
-    train_dir = "/content/drive/My Drive/TU_berlin/train"
-    class_names = sorted(os.listdir(train_dir))
-    class_to_idx = {class_name: i for i, class_name in enumerate(class_names)}
+    test_dataset = datasets.ImageFolder(os.path.join('/content/drive/My Drive/TU_berlin', args.data), transform=test_transforms)
+    test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
 
-    test_dir = args.data
+    class_correct = defaultdict(int)
+    class_total = defaultdict(int)
+    class_accuracy = {}
 
-    class_correct = Counter()
-    class_total = Counter()
+    correct = 0
+    total = 0
+    misclassified_images = []
+    true_labels_list = []
+    predicted_labels_list = []
 
-    for root, dirs, files in tqdm(os.walk(test_dir)):
-        for f in files:
-            if f.lower().endswith('.png'):
-                class_label = os.path.basename(root)
-                img_path = os.path.join(root, f)
-                img = pil_loader(img_path)
-                img = transform(img).unsqueeze(0).to(device)
-                output = ensemble_model(img)
-                pred = torch.argmax(output).item()
+    with torch.no_grad():
+        for inputs, labels in tqdm(test_loader):
+            inputs, labels = inputs.to(device), labels.to(device)
+            outputs = ensemble_model(inputs)
+            _, predicted = torch.max(outputs, 1)
+            correct += (predicted == labels).sum().item()
+            total += labels.size(0)
+            for label, prediction in zip(labels, predicted):
+                class_correct[label.item()] += (prediction == label).item()
+                class_total[label.item()] += 1
 
-                class_index = class_to_idx[class_label]
+                if len(args.model_names) >= 2 and prediction != label:
+                    misclassified_images.append(inputs[0].cpu())
+                    true_labels_list.append(label.item())
+                    predicted_labels_list.append(prediction.item())
 
-                class_total[class_label] += 1
-                if pred == class_index:
-                    class_correct[class_label] += 1
+    global_accuracy = correct / total
+    print(f"Global Accuracy: {global_accuracy}")
 
-    
-    class_performance = {cls: (class_correct[cls] / class_total[cls] if class_total[cls] > 0 else 0) for cls in class_total}
-    
-    overall_performance = sum(class_performance.values()) / len(class_performance) if class_performance else 0
+    for class_idx in class_correct:
+        class_accuracy[test_loader.dataset.classes[class_idx]] = class_correct[class_idx] / class_total[class_idx]
 
-    # Identifying top 5 and bottom 5 classes
-    best_performing_classes = sorted(class_performance.items(), key=lambda x: x[1], reverse=True)[:5]
-    worst_performing_classes = sorted(class_performance.items(), key=lambda x: x[1])[:5]
+    sorted_class_accuracy = sorted(class_accuracy.items(), key=lambda x: x[1], reverse=True)
 
-    # Displaying the results
-    print(f"Global Accuracy: {overall_performance:.2f}")
+    top_5_classes = sorted_class_accuracy[:5]
+    bottom_5_classes = sorted_class_accuracy[-5:]
 
-    print("\nTop 5 Best Performing Classes:")
-    for cls, performance in best_performing_classes:
-        print(f"Class {cls}: Accuracy {performance:.2f}")
+    print(f"Top 5 Performing Classes: {top_5_classes}")
+    print(f"Bottom 5 Performing Classes: {bottom_5_classes}")
 
-    print("\nTop 5 Worst Performing Classes:")
-    for cls, performance in worst_performing_classes:
-        print(f"Class {cls}: Accuracy {performance:.2f}")
+    if len(args.model_names) >= 2:
+        misclassified_images = torch.stack(misclassified_images)[:30]
+        true_labels_list = true_labels_list[:30]
+        predicted_labels_list = predicted_labels_list[:30]
+        plot_misclassified_images(misclassified_images, true_labels_list, predicted_labels_list, test_loader)
 
 if __name__ == "__main__":
     main()

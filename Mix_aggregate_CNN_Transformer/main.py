@@ -98,16 +98,20 @@ def validate_model(model, val_loader, device):
 
 
 
-def main():
+def main(CNN = False):
     args = parse_args()
 
     if not os.path.exists(args.experiment):
         os.makedirs(args.experiment)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    train_dataset, val_dataset = get_datasets(args.data_train, args.data_val)
+    if CNN:
+      train_dataset, val_dataset = get_datasets(args.data_train, args.data_val, input_size = 64)
+    else : 
+      train_dataset, val_dataset = get_datasets(args.data_train, args.data_val)
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
+
 
     factory = ModelFactory(args.model_names, num_classes=250)
     models = factory.get_models()
@@ -117,7 +121,7 @@ def main():
         optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
 
         best_val_accuracy = 0.0
-        patience = 5
+        patience = 10
         epochs_without_improvement = 0
 
         for epoch in range(args.epochs):
