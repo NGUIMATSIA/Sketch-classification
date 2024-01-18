@@ -12,3 +12,6 @@ class ModelFactory:
 
     def get_models(self):
         return self.models
+    
+    def get_models_advanced(self):
+        return self.models
